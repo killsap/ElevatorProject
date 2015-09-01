@@ -15,6 +15,11 @@ public class Elevator {
     //some structure for storing occupants in a logical way
     // this may be better to handle in another class not yet determined.
     
+    //I'm thinking of using a red black tree to store the ocupents 
+    //I have a tree designed to work with generics already at home I will add it
+    //in a seperate branch and see how it works but that wont be unti tonight at 
+    //the earliest hope i can find it.
+    
     /**
      * Creates new Elevator with specified capacity starting at floor 0
      * @param cap the capacity for the elevator
@@ -79,6 +84,12 @@ public class Elevator {
             throw new InvalidLocationException("Trying to move down "
                     + "while on first floor.");
         currentFloor--;
+    }
+    
+    //TODO coplete
+    public int letOut(int floor){
+        int count = 0;
+        return count;
     }
     
     //To Be Implemented
