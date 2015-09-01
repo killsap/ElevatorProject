@@ -1,6 +1,6 @@
 package ElevatorProject;
 
-/** 
+/**
  * Group 1 - Nicholas Persing, Christopher Millsap, Julio Villazon
  *Elevator Project CSE 2010 - Fall 2015 - Section 1
  * 
@@ -79,6 +79,16 @@ public class Elevator {
             throw new InvalidLocationException("Trying to move down "
                     + "while on first floor.");
         currentFloor--;
+    }
+    
+    //To Be Implemented
+    public boolean isFull(){
+        return false;
+    }
+    
+    //To Be Implemented
+    public boolean isEmpty(){
+        return false;
     }
     
 }
