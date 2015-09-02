@@ -18,7 +18,7 @@ package ElevatorProject;
  * 
  * @author Group 1 - Nicholas Persing, Christopher Millsap, JulioVillazon
  */
-public class Person {
+public class Person implements Comparable{
     private int floor;
 
     /**
@@ -51,5 +51,14 @@ public class Person {
      */
     public void setFloor(int floor){
         this.floor=floor;
+    }
+    
+    @Override
+    public int compareTo(Object o) {
+        if(((Person)o).floor < this.floor)
+            return 1;
+        if(((Person)o).floor > this.floor)
+            return -1;
+        return 0;
     }
 }

@@ -11,14 +11,10 @@ package ElevatorProject;
 public class Elevator {
     private int currentFloor;
     private final int capacity;
-    private final int maxFloor; //Might be a good safe place to store and use this value
-    //some structure for storing occupants in a logical way
-    // this may be better to handle in another class not yet determined.
-    
-    //I'm thinking of using a red black tree to store the ocupents 
-    //I have a tree designed to work with generics already at home I will add it
-    //in a seperate branch and see how it works but that wont be unti tonight at 
-    //the earliest hope i can find it.
+    private final int maxFloor; 
+    private Person[] occupants; 
+    private FloorQueue[] floorArray;
+  
     
     /**
      * Creates new Elevator with specified capacity starting at floor 0
@@ -35,6 +31,9 @@ public class Elevator {
         capacity = cap;
         currentFloor = 0;
         maxFloor = floorCount;
+        
+        occupants = new Person[capacity];
+        floorArray = new FloorQueue[maxFloor];
     }
     
     /**
@@ -86,8 +85,30 @@ public class Elevator {
         currentFloor--;
     }
     
-    //TODO coplete
+    public int getCurrentOccupancy(){
+        int count = 0, i = 0;
+        while(occupants[i]!=null){
+            count++;
+        }
+        return count;
+    }
+    
+    //TODO Implement
+//    private void addPerson(Person p){
+//        for(int i = 0; i< capacity; i++){
+//            if(p.compareTo(occupants[i] => 0))
+//                
+//        }
+//    }
+    
+    //TODO Implement
     public int letOut(int floor){
+        int count = 0;
+        return count;
+    }
+    
+    //TODO Implement
+    public int letIn(int floor){
         int count = 0;
         return count;
     }
