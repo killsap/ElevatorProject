@@ -1,0 +1,510 @@
+import java.awt.Font;
+import java.sql.Time;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Random;
+import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
+
+
+/**
+ * Example of the class extending the elevator. Current implementation works by
+ * taking one person at a time.
+ * 
+ * @author Ivan Bogun
+ *
+ */
+public class OnePersonElevator extends Elevator {
+	
+	// Part of GUI ------------------------------------------------------------------------------------------------
+	static int tempFloors = 0;
+	static ArrayList<PassengerReleased> requestedTime = new ArrayList<PassengerReleased>(); // Saves time requested
+	
+	ArrayList<ArrayList<Integer>> Manypassengers = new ArrayList<ArrayList<Integer>>();
+	
+	static ArrayList<Time> arivedTime = new ArrayList<Time>(); // Saves time arrived
+	public static boolean tester;
+	static long transferCost;
+	//Holds string builds--------------------------------------------------------
+	static ArrayList<StringBuilder> savedString = new ArrayList<StringBuilder>();
+	//Holds string builds--------------------------------------------------------
+	// Part of GUI ------------------------------------------------------------------------------------------------
+
+	public OnePersonElevator(int capacity, int timeMoveOneFloor, int floors,
+			int doorDelta, boolean verbose) {
+		super(capacity, timeMoveOneFloor, floors, doorDelta, verbose);
+
+	}
+
+	public void initialize(Queue<PassengerRequest> requests) {
+		servingQueue = requests;
+	}
+
+	public ArrayList<PassengerReleased> move() {
+		if (!continueOperate())
+			return null;
+
+		ArrayList<PassengerReleased> released = new ArrayList<PassengerReleased>();
+
+		PassengerRequest request = this.servingQueue.remove();
+
+		long currentTime = Math.max(this.currentTime.getTime(), request
+				.getTimePressedButton().getTime()); // whichever happened latest
+
+		long timeInMiliseconds = currentTime + this.doorDelta
+				* 1000
+				+ // delta to open AND close the door to let the passenger in
+				1000 * this.timeMoveOneFloor
+				* (Math.abs(currentFloor - request.getFloorFrom()))
+				+
+				// time to get to the passenger's floor
+				1000 * this.timeMoveOneFloor
+				* (Math.abs(request.getFloorFrom() - request.getFloorTo())) +
+				// time to move to the destination
+				this.doorDelta * 1000; // delta to open AND close the door to
+										// let the passenger out
+
+		PassengerReleased requestReleased = new PassengerReleased(request,
+				new Time(timeInMiliseconds));
+
+		released.add(requestReleased);
+		if (verbose) {
+			StringBuilder sb = new StringBuilder();
+			sb.append(currentFloor + " / " + request.getFloorFrom() + " / "
+					+ request.getFloorTo() + " | ");
+			sb.append(request.getTimePressedButton() + " / "
+					+ new Time(timeInMiliseconds));
+			
+			// Part of GUI --------------------------------------------------------------
+			arivedTime.add(new Time(timeInMiliseconds)); // Saves the time arrived for GUI
+			// Part of GUI --------------------------------------------------------------
+			
+			System.out.println(new String(sb));
+		}
+		this.currentTime.setTime(timeInMiliseconds);
+		currentFloor = request.getFloorTo();
+		return released;
+	}
+
+	public boolean continueOperate() {
+		if (this.servingQueue.isEmpty()) {
+			return false;
+		} else {
+			return true;
+		}
+	}
+
+	public ArrayList<PassengerReleased> operate() {
+		ArrayList<PassengerReleased> released = new ArrayList<PassengerReleased>();
+		if (verbose) {
+			System.out
+					.println("Floor at / floor from / floor to | Requested / arrived");
+		}
+
+		while (this.continueOperate()) {
+			ArrayList<PassengerReleased> moved = this.move();
+			released.addAll(moved);
+			
+			//-------------------------------------------
+			requestedTime.addAll(moved); // Added for GUI
+			//-------------------------------------------
+		}
+		return released;
+	}
+
+	@SuppressWarnings("deprecation")
+	public static void main(String[] args) throws InterruptedException  {
+		
+		// Operation--------------------------------------
+		Scanner sc = new Scanner(System.in);
+		int tempint, peopl;
+		System.out.println("Enter floors: ");
+		tempint = sc.nextInt();
+		System.out.println("Enter people: ");
+		peopl = sc.nextInt();
+		sc.close();
+		// Operation--------------------------------------
+
+		Random rnd = new Random(0);
+		int maxWeight = 250; // max is 250 lbs
+		int capacity = maxWeight * 4;
+		Time startingTime = new Time(8, 0, 0); // 8 am
+
+		int floors = tempint;
+		tempFloors = floors;
+		boolean verbose = true;
+		int secondsPerFloor = 10;
+		int timeOpenDoors = 15; // 15 seconds to open the door
+		long currentTime = startingTime.getTime();
+		int maxSeconds = 200;
+		int numberOfPassangers = peopl; // number of passengers to generate
+		Queue<PassengerRequest> elevatorQueue = new LinkedList<PassengerRequest>();
+		
+		// Part of GUI -------------------------------------------------------------
+		Queue<PassengerRequest> elevatorQueue2 = new LinkedList<PassengerRequest>();
+		// Part of GUI -------------------------------------------------------------
+
+		for (int i = 0; i < numberOfPassangers; i++) {
+			int floor_from = rnd.nextInt(floors) + 1; // to generate numbers
+														// from [1, floors]
+			int floor_to = rnd.nextInt(floors) + 1;
+
+			int weight = rnd.nextInt(maxWeight);
+
+			int seconds = rnd.nextInt(maxSeconds);
+			currentTime += seconds * 1000;
+			Time time = new Time(currentTime);
+			PassengerRequest request = new PassengerRequest(time, floor_from,
+					floor_to, weight);
+			elevatorQueue.add(request);
+			
+			// Part of GUI ------------------------------
+			elevatorQueue2.add(request); // Added for GUI
+			// Part of GUI ------------------------------
+		}
+
+		Elevator elevator = new OnePersonElevator(capacity, secondsPerFloor,
+				floors, timeOpenDoors, verbose);
+
+		elevator.initialize(elevatorQueue);
+
+		ArrayList<PassengerReleased> output = elevator.operate();
+
+		long cost = 0;
+
+		for (int i = 0; i < output.size(); i++) {
+
+			PassengerReleased passenger = output.get(i);
+			Time timeRequested = passenger.getTimeArrived();
+			Time timeLeft = passenger.getPassengerRequest()
+					.getTimePressedButton();
+
+			cost += Math.abs(timeLeft.getTime() - timeRequested.getTime());
+		}
+		
+		// Added for GUI---
+		transferCost = cost;
+		// Added for GUI---
+		
+		System.out.println("Total cost (in seconds): " + cost / 1000);
+
+		guiDesign(floors, numberOfPassangers, elevatorQueue2); // Being called in main
+		
+
+	}
+	
+	
+/** This is the start of the GUI for the Single Person Elevator --------------------------------------------------------------- 
+ *  
+ * elevatorQueue2.add(request); was added above to save the queue line 122 ----------------------------------------------------
+ *  Added code lines: 17 - 25, 72 - 74, 101, 106 - 130, 147 - 149, 165 - 167 (END)
+ *  @author Chris Millsap
+ * Version 1: 2015. -----------------------------------------------------------------------------------------------------------
+ **/	
+	// Added for GUI String Builder Formats time requested and arrived-----------------------------------
+		// Added for GUI String Builder Formats time requested and arrived-----------------------------------
+		@SuppressWarnings("deprecation")
+		public static StringBuilder stringBuilds(int index, int floorAt1, int floorFrom1, int floorTo1) {
+			//int x, y; // Print time coordinates Requested/Arrived
+			
+			int a = requestedTime.get(index).getPassengerRequest().getTimePressedButton().getHours();
+			int b = requestedTime.get(index).getPassengerRequest().getTimePressedButton().getMinutes();
+			int c = requestedTime.get(0).getPassengerRequest().getTimePressedButton().getSeconds();
+
+			int e = arivedTime.get(index).getHours();
+			int i = arivedTime.get(index).getMinutes();
+			int j = arivedTime.get(index).getSeconds();
+			
+			StringBuilder sb2 = new StringBuilder();
+			
+			sb2.append(floorAt1 + "  /  " + floorFrom1 + "  /  "
+					+ floorTo1 + "  |  ");
+			sb2.append(a+" : "+b+" : "+c + "  /  "
+					+ e+" : "+i+" : "+j);
+			savedString.add(sb2);
+			return sb2;
+		}
+		// Added for GUI String Builder Formats time requested and arrived-----------------------------------
+		// Added for GUI String Builder Formats time requested and arrived-----------------------------------
+	
+	public static void guiDesign(int floors, int numberOfPassangers,
+			Queue<PassengerRequest> elevatorQueue2) throws InterruptedException {
+		
+		// double values dynamically resize to amount of floors
+		double size = 0.0;
+		double size2 = 600.0 / (floors);
+		double elevatorLevel = 0.0;
+		// double values dynamically resize to amount of floors
+
+		// Hold indexes for elevator ----------------------------
+		ArrayList<Double> localIndex = new ArrayList<Double>();
+		ArrayList<Double> sizeTo = new ArrayList<Double>();
+		// Hold indexes for elevator ----------------------------
+		
+		// Draws the canvas ----------
+		StdDraw.setCanvasSize(800, 600);
+		StdDraw.setXscale(0, 800);
+		StdDraw.setYscale(0, 600);
+		//StdDraw.frame.setTitle("Standard Draw");
+		// Draws the canvas ----------
+		
+		int floorAt = 1; // Starting floor
+		StdDraw.setPenColor(StdDraw.YELLOW); // Sets the color of the elevator.
+		int i = 0;	
+		
+		// Plays song ---------------------------------------
+		//String SOUND_FILE = "lib/bensound-funnysong (1).wav";
+		//String SOUND_FILE = "dingSound.wav";
+		//StdAudio.loop(SOUND_FILE);
+		// Plays song ---------------------------------------
+		
+		while (!elevatorQueue2.isEmpty() && i  != numberOfPassangers ) {
+			
+			// Image file names -----
+			String up = "up.PNG";
+			String down = "down.PNG";
+			// Image file names -----
+			
+			int firstFrom = elevatorQueue2.peek().getFloorFrom(); // Request from
+			int firstTo = elevatorQueue2.peek().getFloorTo(); // Floor request wants to go to
+
+			floorDesigner(floors, size, size2, localIndex, sizeTo, elevatorLevel); // Calls method to design floors
+			StdDraw.show(20);
+			
+			while (floorAt < firstFrom && !elevatorQueue2.isEmpty()) { // Starts at floor 1
+				
+				if(floorAt > firstTo){
+					StdDraw.picture(400, sizeTo.get(firstFrom), down);
+					StdDraw.show(20);
+				}
+				if(floorAt < firstTo){
+					StdDraw.picture(400, sizeTo.get(firstFrom), up);
+					StdDraw.show(20);
+				}
+				
+				StdDraw.setPenColor(StdDraw.YELLOW);
+				StdDraw.filledRectangle(584, sizeTo.get(floorAt), 110, size2 / 3);
+				StdDraw.show(20);
+				StdDraw.setPenColor(StdDraw.GREEN);
+				StdDraw.filledRectangle(584, sizeTo.get(firstFrom), 110, size2 / 3);
+				StdDraw.show(20);
+				StdDraw.setPenColor(StdDraw.RED);
+				stringBuilds(i, floorAt, firstFrom, firstTo);
+				StdDraw.show(20);
+				TimeUnit.SECONDS.sleep(1); // Sleep for 1/2 second
+				floorAt++;
+				floorDesigner(floors, size, size2, localIndex, sizeTo, elevatorLevel);
+				StdDraw.show(20);
+				timeData(savedString, i, floorAt, firstFrom, firstTo, sizeTo);
+				StdDraw.show(20);
+			}
+			
+			while(floorAt > firstFrom && !elevatorQueue2.isEmpty()) { // Is floor to reach lower?
+				
+				if(floorAt > firstTo){
+					StdDraw.picture(400, sizeTo.get(firstFrom), down);
+					StdDraw.show(20);
+				}
+				if(floorAt < firstTo){
+					StdDraw.picture(400, sizeTo.get(firstFrom), up);
+					StdDraw.show(20);
+				}
+				StdDraw.show(20);
+				StdDraw.setPenColor(StdDraw.YELLOW);
+				StdDraw.filledRectangle(584, sizeTo.get(floorAt), 110, size2 / 3);
+				StdDraw.show(20);
+				StdDraw.setPenColor(StdDraw.GREEN);
+				StdDraw.filledRectangle(584, sizeTo.get(firstFrom), 110, size2 / 3);
+				StdDraw.show(20);
+				StdDraw.setPenColor(StdDraw.RED);
+				stringBuilds(i, floorAt, firstFrom, firstTo);
+				StdDraw.show(20);
+				TimeUnit.SECONDS.sleep(1); // Sleep for 1/2 second
+				floorAt--;
+				floorDesigner(floors, size, size2, localIndex, sizeTo, elevatorLevel);
+				StdDraw.show(20);
+				timeData(savedString, i, floorAt, firstFrom, firstTo, sizeTo);
+				StdDraw.show(20);
+			}
+			
+			if(floorAt == firstFrom && !elevatorQueue2.isEmpty()) { // Floor is reached
+				StdDraw.setPenColor(StdDraw.BLUE);
+				StdDraw.filledRectangle(584, sizeTo.get(floorAt), 110, size2 / 3);
+				StdDraw.show(20);
+				TimeUnit.SECONDS.sleep(1); // Sleep for 1/2 second
+				StdDraw.show(20);
+				while(floorAt < firstTo && !elevatorQueue2.isEmpty()) {
+					
+					StdDraw.show(20);
+					StdDraw.setPenColor(StdDraw.YELLOW);
+					StdDraw.filledRectangle(584, sizeTo.get(floorAt), 110, size2 / 3);
+					StdDraw.show(20);
+					StdDraw.setPenColor(StdDraw.RED);
+					stringBuilds(i, floorAt, firstFrom, firstTo);
+					StdDraw.show(20);
+					TimeUnit.SECONDS.sleep(1); // Sleep for 1/2 second
+					floorAt++;
+					floorDesigner(floors, size, size2, localIndex, sizeTo, elevatorLevel);
+					StdDraw.show(20);
+					timeData(savedString, i, floorAt, firstFrom, firstTo, sizeTo);
+					StdDraw.show(20);
+				}
+				
+				while(floorAt > firstTo && !elevatorQueue2.isEmpty()) { // Is floor to reach lower?
+					
+					StdDraw.show(20);
+					StdDraw.setPenColor(StdDraw.YELLOW);
+					StdDraw.filledRectangle(584, sizeTo.get(floorAt), 110, size2 / 3);
+					StdDraw.show(20);
+					StdDraw.setPenColor(StdDraw.RED);
+					stringBuilds(i, floorAt, firstFrom, firstTo);
+					StdDraw.show(20);
+					TimeUnit.SECONDS.sleep(1); // Sleep for 1/2 second
+					floorAt--;
+					floorDesigner(floors, size, size2, localIndex, sizeTo, elevatorLevel);
+					StdDraw.show(20);
+					timeData(savedString, i, floorAt, firstFrom, firstTo, sizeTo);
+					StdDraw.show(20);
+				}
+				
+				if(floorAt == firstTo && !elevatorQueue2.isEmpty()){ // Floor is reached
+
+						StdDraw.setPenColor(StdDraw.RED);
+						StdDraw.filledRectangle(584, sizeTo.get(floorAt), 110, size2 / 3);
+						StdDraw.show(20);
+						stringBuilds(i, floorAt, firstFrom, firstTo);
+						StdDraw.show(20);
+						StdDraw.setPenColor(StdDraw.BLACK);
+						timeData(savedString, i, floorAt, firstFrom, firstTo, sizeTo);
+						StdDraw.show(20);
+						TimeUnit.SECONDS.sleep(1); // Sleep for 1/2 second
+					 	
+						elevatorQueue2.poll();
+						StdDraw.show(20);
+						i++;
+						if (!elevatorQueue2.isEmpty()) {
+							firstFrom = elevatorQueue2.peek().getFloorFrom(); // Request from
+							firstTo = elevatorQueue2.peek().getFloorTo(); // Floor request wants to go to
+						}
+					if (elevatorQueue2.isEmpty()) {
+						StdDraw.text(85, 35, "Total cost (in seconds): " + transferCost/1000);
+						StdDraw.show(20);
+						TimeUnit.SECONDS.sleep(4);
+						StdDraw.clear();
+						StdDraw.show(20);
+						StdDraw.setPenColor(StdDraw.RED);
+						StdDraw.text(400, 300, "The End!!!");
+						StdDraw.show(20);
+						TimeUnit.SECONDS.sleep(1);
+						System.exit(0); // Exits system
+					}
+					continue; // Continues to beginning of loop
+				}
+			}
+		}
+	}
+	
+	// Prints out statistics for elevator time
+	public static void timeData(ArrayList<StringBuilder> sbTwo, int index, int floorAt2, int floorFrom2, int floorTo2, ArrayList<Double> sTwo) {
+		StdDraw.setPenColor(StdDraw.BLACK);
+		Double s = sTwo.get(1);
+		if(sbTwo != null) {
+				StdDraw.setPenColor(StdDraw.GREEN);
+				Font font = new Font("Sans Serif", Font.BOLD, 16);
+				StdDraw.setFont(font);
+				StdDraw.text(165, 400 + s, stringBuilds(index, floorAt2, floorFrom2, floorTo2).toString());
+				s+=s;
+				StdDraw.setPenColor();
+				StdDraw.setFont();
+			
+		}
+	}
+
+	public static void floorDesigner(int floors, double size, double size2,
+			ArrayList<Double> localIndex, ArrayList<Double> sizeTo, double elevatorLevel) {		
+
+		StdDraw.clear(); // Clears elements to ad new
+
+		// To set the color of the background uncomment
+//		StdDraw.setPenColor(StdDraw.BOOK_LIGHT_BLUE);
+//		StdDraw.filledRectangle(400, 300, 800, 600);
+//		StdDraw.show();
+//		StdDraw.setPenColor();
+		
+		
+		// Displays the titles && windows --------------------	
+		String roof = "house-roof-hi.png";
+		StdDraw.setPenColor(StdDraw.BLACK);
+		String logo = "elevatorProject.png";
+		String mon = "monitor-23269_640.png";
+		StdDraw.picture(65, 600, logo, 200, 60);
+
+		StdDraw.text(180, 565, "Floor at / floor from / floor to | Requested / Will arrive");
+		
+		//StdDraw.rectangle(165, 400, 190, 150);
+		StdDraw.picture(165, 350, mon, 400, 400);
+		StdDraw.picture(584, 610, roof, 300, 20, 0);
+		StdDraw.text(750, 610, "Floors");
+		StdDraw.text(10, 10, "Legend: ");
+		StdDraw.setPenColor(StdDraw.BLUE);
+		StdDraw.filledSquare(145, 10, 10);
+		StdDraw.text(90, 10, "Picking-up: ");
+		StdDraw.setPenColor(StdDraw.RED);
+		StdDraw.filledSquare(290, 10, 10);
+		StdDraw.text(225, 10, "Dropping off: ");
+		StdDraw.setPenColor(StdDraw.GREEN);
+		StdDraw.filledSquare(405, 10, 10);
+		StdDraw.text(350, 10, "Requests: ");
+		StdDraw.setPenColor(StdDraw.BLACK);
+		// Displays the titles && windows --------------------		
+		
+		int indexpointer = 2; // Starts after 1 so increment is correct
+		localIndex.add(0.0); // For null
+		sizeTo.add(0.0); // For null
+		
+		// Draws building --------------------
+		StdDraw.setPenColor(StdDraw.BLACK);
+		StdDraw.rectangle(584, 300, 130, 300);
+		//StdDraw.show(20);
+		// Draws building --------------------
+		
+		elevatorLevel = size2/2; // Sets the level
+		
+		// Creates floors ---------------------------------
+		sizeTo.add(1, elevatorLevel);
+		for (int i = 0; i < floors; i++) {
+			StdDraw.setPenColor(StdDraw.BLACK);
+			StdDraw.line(455, size, 714, size);
+			
+			size = size + size2;
+			sizeTo.add(indexpointer, size + elevatorLevel);
+			
+			String x = String.valueOf(i+1);
+			
+			StdDraw.setPenColor(StdDraw.BLACK);
+			int textsize = 450/floors;
+			Font font = new Font("Sans Serif", Font.PLAIN, textsize);
+			StdDraw.setFont(font);
+			StdDraw.text(750, sizeTo.get(i+1), x);
+			StdDraw.setFont();
+			StdDraw.setPenRadius();
+			indexpointer++;
+		}
+		// Creates floors ---------------------------------
+		
+	}
+	public static void testerR(boolean t) {
+		tester = t;
+		
+	}
+	/** This is the start of the GUI for the Single Person Elevator --------------------------------------------------------------- 
+	 *  
+	 * elevatorQueue2.add(request); was added above to save the queue line 122 ----------------------------------------------------
+	 *  Added code lines: 17 - 25, 72 - 74, 101, 106 - 130, 147 - 149, 165 - 167 (END)
+	 *  @author Chris Millsap
+	 * Version 1: 2015. -----------------------------------------------------------------------------------------------------------
+	 **/
+
+}
+
